@@ -8,9 +8,7 @@ output: html_notebook
 ```{r}
 
 library(tidyverse)
-library(ggthemes)
-library(ggrepel)
-library(bayestestR)
+library(pwr)
 
 ```
 
@@ -131,6 +129,8 @@ true_data_summary <- sim_data %>%
 # Plot data
 ```{r plot}
 
+
+
 true_variability_labs <- c("high true variability (sd = 1)", "low true variability (sd = .5)")
 names(true_variability_labs) <- c("high", "low")
 
@@ -138,27 +138,58 @@ names(true_variability_labs) <- c("high", "low")
 error_labs <- c("large measurement error (sd = 1)", "small measurement error (sd = .5)")
 names(error_labs) <- c("large", "small")
 
+expr <- as.character(expression('r'[xx]))
+
 sim_plot <- sim_data %>%
   ggplot(aes(x = fct_rev(scores_type), y = score)) +
   geom_hline(yintercept = 0, lty = "dashed") +
   geom_line(aes(group = id), color = "grey") +
   geom_point(aes(color = scores_type)) +
- # geom_violin() +
   facet_grid(true_variability ~ error, labeller=labeller(true_variability = true_variability_labs, error = error_labs)) +
     theme_few() +
   scale_x_discrete("Score type") +
   ylim(-3, 4) +
-  theme(legend.position = "none") +
-  geom_label(data = true_data_summary, y = -3, label.size = NA, label.padding = unit(.1, "lines"), alpha = 0, vjust = "bottom", nudge_x = .5, size = 3, aes(label = paste("Mean = ", mean, ", sd = ", round(sd, 2), ", d = ", round(d, 2), ", r = ", round(r, 2)))) 
-
-
-sim_plot
+  theme(legend.position = "none", text = element_text(size=12)) +
+  geom_label(data = true_data_summary, 
+             y = -3, 
+             label.size = NA, 
+             label.padding = unit(.1, "lines"), 
+             alpha = 0, 
+             vjust = "bottom", 
+             nudge_x = .5, 
+             size = 3, 
+             aes(label = (paste("Mean = ", mean, ", sd = ", round(sd, 2), ", d = ", round(d, 2), ", r\u2093\u2093  = ", round(r, 2))))) # To get subscripts, use unicode
+             
 
 ggsave("reliability_plot.png", width = 8.5, height = 5, units = "in", dpi = 300)
 ```
 ## Table 1 - Sample size and power
 
 ```{r}
+
+# Compute necessary sample sizes at different levels of Cohen's d
+
+
+# d = .2
+
+pwr.t.test(d = .2, power = .8)
+
+# d = .4
+
+pwr.t.test(d = .4, power = .8)
+
+# d = .6
+
+pwr.t.test(d = .6, power = .8)
+
+# d = .8
+
+pwr.t.test(d = .8, power = .8)
+
+#d = 1
+
+pwr.t.test(d = 1, power = .8)
+
 
 ```
 

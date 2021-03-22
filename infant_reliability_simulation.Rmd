@@ -9,6 +9,8 @@ output: html_notebook
 
 library(tidyverse)
 library(pwr)
+library(bayestestR)
+library(ggthemes)
 
 ```
 
@@ -19,59 +21,54 @@ library(pwr)
 
 set.seed(100)
 size = 50
-
-my_mean <- 1 # Mean of all simulated datasets
-sd_true_small <- .5
-sd_true_large <- 1
-sd_error_small <- .5
-sd_error_large <- 1
-
+sd_error_small = .5
+sd_error_large = 1
 
 # Use distribution_normal to get a distribution that is as close as possible to canonical normal distribution
-#scores_true_stable <- rep(1, size) # sd = 0; variance = 0
-scores_true_stable <- distribution_normal(size, mean = my_mean, sd = sd_true_small) 
-scores_true_variable <- distribution_normal(size, mean = my_mean, sd = sd_true_large) # sd = 1, variance = 1
-#true_variability_low <- rep("low", size)
-#true_variability_high <- rep("high", size)
 
-# sample creates a random permutation to scramble the errors
+# Distribute the errors
 
 meas_err_small <- sample(distribution_normal(size, mean = 0, sd = sd_error_small)) # sd = .5 variance = .25)
 meas_err_large <- sample(distribution_normal(size, mean = 0, sd = sd_error_large)) # sd = 1, variance = 1)
-err_large <- rep("large", size)
-err_small <- rep("small", size)
 
-# Calculate observed scores
+# Distribute the true scores
 
-obs_scores_stable_small <- scores_true_stable + meas_err_small
-obs_scores_stable_large <- scores_true_stable + meas_err_large
+true_large_stable <- as.data.frame(distribution_normal(size, mean = 1, sd = .5)) %>% mutate(true_mean = 1, true_sd = .5) %>% rename("score_true" = `distribution_normal(size, mean = 1, sd = 0.5)`)
+true_large_variable <- as.data.frame(distribution_normal(size, mean = 1, sd = 1)) %>% mutate(true_mean = 1, true_sd = 1) %>% rename("score_true" = `distribution_normal(size, mean = 1, sd = 1)`)
+true_small_stable <- as.data.frame(distribution_normal(size, mean = .5, sd = .5)) %>% mutate(true_mean = .5, true_sd = .5) %>% rename("score_true" = `distribution_normal(size, mean = 0.5, sd = 0.5)`)
+true_small_variable <- as.data.frame(distribution_normal(size, mean = .5, sd = 1)) %>% mutate(true_mean = .5, true_sd = 1) %>% rename("score_true" = `distribution_normal(size, mean = 0.5, sd = 1)`)
 
-obs_scores_variable_small <- scores_true_variable + meas_err_small
-obs_scores_variable_large <- scores_true_variable + meas_err_large
+# Combine all combinations of means and true sds into one dataframe
 
-# Create dataframes for
+true_scores <- rbind(true_large_stable, true_large_variable, true_small_stable, true_small_variable) %>%
+  mutate(true_d = true_mean/true_sd) %>%
+  mutate(true_variability =
+           case_when(true_sd == 1 ~ "high",
+                     true_sd == .5 ~ "low")) %>%
+  mutate(id = row_number())
 
-sim_data_stable <- as.data.frame(cbind(scores_true_stable, meas_err_small, meas_err_large)) %>%
-  mutate(true_variability = "low") %>%
-  rename(scores_true = scores_true_stable) %>%
-  mutate(scores_err_large = scores_true + meas_err_large) %>%
-  mutate(scores_err_small = scores_true + meas_err_small) %>%
-  pivot_longer(names_to = "error", values_to = "scores_observed", cols = c(scores_err_small, scores_err_large), names_prefix = "scores_err_") 
+# Add measurement error to datasets
 
-sim_data_variable <- as.data.frame(cbind(scores_true_variable, meas_err_small, meas_err_large)) %>%
-  mutate(true_variability = "high") %>%
-  rename(scores_true = scores_true_variable) %>%
-  mutate(scores_err_large = scores_true + meas_err_large) %>%
-  mutate(scores_err_small = scores_true + meas_err_small) %>%
-  pivot_longer(names_to = "error", values_to = "scores_observed", cols = c(scores_err_small, scores_err_large), names_prefix = "scores_err_") 
+with_large_errors <- true_scores %>%
+  mutate(score_observed = score_true + rep(meas_err_small, 4)) %>%
+  mutate(error = "large") %>%
+  mutate(error_sd = 1)
 
+with_small_errors <- true_scores %>%
+  mutate(score_observed = score_true + rep(meas_err_large, 4)) %>%
+  mutate(error = "small") %>%
+  mutate(error_sd = .5)
 
-sim_data <- rbind(sim_data_stable, sim_data_variable) %>%
-  mutate(error = as.factor(error), true_variability = as.factor(true_variability)) %>%
-  group_by(error, true_variability) %>%
-  arrange(true_variability, error, scores_true, scores_observed) %>%
-  mutate(id = row_number()) %>%
-  pivot_longer(names_to = "scores_type", values_to = "score", cols = c("scores_true", "scores_observed"), names_prefix = "scores_")
+# Combine datasets with small and large errors, pivot to long format
+
+sim_data <- rbind(with_small_errors, with_large_errors) %>%
+  pivot_longer(names_to = "score_type", values_to = "score", cols = c("score_true", "score_observed"), names_prefix = "score_") %>%
+  mutate(panel = case_when(
+    error_sd == 1 & true_sd == 1 ~ "A",
+    error_sd == .5 & true_sd == 1 ~ "B",
+    error_sd == 1 & true_sd == .5 ~ "C",
+    error_sd == .5 & true_sd == .5 ~ "D"
+  ))
 
 
 
@@ -84,45 +81,19 @@ sim_data <- rbind(sim_data_stable, sim_data_variable) %>%
 # Observed Cohen's d
 
 sim_data_summary <- sim_data %>%
-  group_by(scores_type, true_variability, error) %>%
-  summarize(mean = mean(score), sd = sd(score), d = mean/sd)
+    group_by(score_type, true_variability, error_sd, true_sd, true_mean, true_d, panel, error) %>%
+  summarize(obs_mean = mean(score), obs_sd = sd(score), sample_d = obs_mean/obs_sd) %>%
+  mutate(total_var = error_sd^2 + true_sd^2) %>%
+  mutate(total_sd = sqrt(total_var)) %>%
+  mutate(d = true_mean/total_sd) %>%
+  mutate(r = true_sd^2/total_var)
 
-
-d_stable_small <- mean(obs_scores_stable_small)/sd(obs_scores_stable_small)
-d_stable_large <- mean(obs_scores_stable_large)/sd(obs_scores_stable_large)
-
-d_variable_small <- mean(obs_scores_variable_small)/sd(obs_scores_variable_small)
-d_variable_large <- mean(obs_scores_variable_large)/sd(obs_scores_variable_large)
-
-# Observed reliabilities
-
-rel_stable_small <- var(scores_true_stable)/(var(scores_true_stable) + var(meas_err_small))
-rel_stable_large <- var(scores_true_stable)/(var(scores_true_stable) + var(meas_err_large))
-
-rel_variable_small <- var(scores_true_variable)/(var(scores_true_variable) + var(meas_err_small))
-rel_variable_large <- var(scores_true_variable)/(var(scores_true_variable) + var(meas_err_large))
-
-# Theoretical
-
-true_data_summary <- sim_data %>%
-  distinct(true_variability, error) %>%
-  mutate(mean = my_mean) %>%
-  mutate(scores_type = "true") %>%
-  mutate(sd_true = case_when(
-         true_variability == "low" ~ sd_true_small,
-         true_variability == "high" ~ sd_true_large)) %>%
-  mutate(sd_err = case_when(
-    error == "small" ~ sd_true_small,    
-    error == "large" ~ sd_true_large)) %>%
-  mutate(var = sd_err^2 + sd_true^2) %>%
-  mutate(sd = sqrt(var)) %>%
-  mutate(d = mean/sd) %>%
-  mutate(r = sd_true^2/var)
+sim_data_m1 <- sim_data_summary %>%
+  filter(score_type == "true") %>%
+  filter(true_mean == 1)
 
 
 ```
-
-
 
 
 
@@ -130,38 +101,40 @@ true_data_summary <- sim_data %>%
 ```{r plot}
 
 
-
 true_variability_labs <- c("high true variability (sd = 1)", "low true variability (sd = .5)")
 names(true_variability_labs) <- c("high", "low")
-
 
 error_labs <- c("large measurement error (sd = 1)", "small measurement error (sd = .5)")
 names(error_labs) <- c("large", "small")
 
-expr <- as.character(expression('r'[xx]))
 
-sim_plot <- sim_data %>%
-  ggplot(aes(x = fct_rev(scores_type), y = score)) +
+sim_plot_m1 <- sim_data %>%
+  filter(true_mean == 1) %>%
+  ggplot() +
   geom_hline(yintercept = 0, lty = "dashed") +
-  geom_line(aes(group = id), color = "grey") +
-  geom_point(aes(color = scores_type)) +
+  geom_line(aes(group = id, x = fct_rev(score_type), y = score), color = "grey") +
+  geom_point(aes(x = fct_rev(score_type), y = score, color = score_type)) +
   facet_grid(true_variability ~ error, labeller=labeller(true_variability = true_variability_labs, error = error_labs)) +
     theme_few() +
   scale_x_discrete("Score type") +
   ylim(-3, 4) +
   theme(legend.position = "none", text = element_text(size=12)) +
-  geom_label(data = true_data_summary, 
+  geom_label(data = sim_data_m1, x = .5, y = 3.8, size = 6, alpha = 0,  label.size = NA, aes(label = panel)) +
+  geom_label(data = sim_data_m1,
+             x = 1.5,
              y = -3, 
              label.size = NA, 
              label.padding = unit(.1, "lines"), 
              alpha = 0, 
              vjust = "bottom", 
-             nudge_x = .5, 
-             size = 3, 
-             aes(label = (paste("Mean = ", mean, ", sd = ", round(sd, 2), ", d = ", round(d, 2), ", r\u2093\u2093  = ", round(r, 2))))) # To get subscripts, use unicode
-             
+             size = 3,
+             aes(label = (paste("Mean = ", true_mean, ", sd = ", round(true_sd, 2), ", d = ", round(d, 2), ", r\u2093\u2093  = ", round(r, 2))))) # To get subscripts, use unicode
+              
 
-ggsave("reliability_plot.png", width = 8.5, height = 5, units = "in", dpi = 300)
+ggsave("reliability_plot_m1.png", width = 8.5, height = 5, units = "in", dpi = 300)
+
+
+
 ```
 ## Table 1 - Sample size and power
 

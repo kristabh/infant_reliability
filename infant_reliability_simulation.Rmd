@@ -140,29 +140,73 @@ ggsave("reliability_plot_m1.png", width = 8.5, height = 5, units = "in", dpi = 3
 
 ```{r}
 
-# Compute necessary sample sizes at different levels of Cohen's d
+# Compute necessary sample sizes at different levels of Cohen's d (Table 1)
 
-
-# d = .2
+# d = .2, n = 393
 
 pwr.t.test(d = .2, power = .8)
 
-# d = .4
+# d = .4, n = 99
 
 pwr.t.test(d = .4, power = .8)
 
-# d = .6
+# d = .6, n = 45
 
 pwr.t.test(d = .6, power = .8)
 
-# d = .8
+# d = .8, n = 26
 
 pwr.t.test(d = .8, power = .8)
 
-#d = 1
+#d = 1, n = 17
 
 pwr.t.test(d = 1, power = .8)
 
 
 ```
+
+```{r}
+# Table 2 - Measurement reliability, true r, observable r, n for power = .8
+
+# Create function for spearman-brown formula
+spearman_brown <- function(r_true, rxx, ryy) {
+ r_obs <-  r_true*sqrt(rxx*ryy)
+    return(r_obs)
+}
+
+# Create dataframe for observable r's
+rxx <- c(1, 1, .6, .6, .2, .2)
+true_r <- c(.7, .3, .7, .3, .7, .3)
+
+reliability <- data.frame(rxx, true_r) %>%
+  mutate(r_obs = spearman_brown(true_r, rxx, rxx))
+
+# Compute necessary samples one at a time since I can't figure out how to get this in a tidy format
+
+# r = .7, n = 13
+
+pwr.r.test(r = .7, power = .8)
+
+# r = .3, n = 84
+
+pwr.r.test(r = .3, power = .8)
+
+# r = .42, n = 41
+
+pwr.r.test(r = .42, power = .8)
+
+# r = .18, n = 239
+
+pwr.r.test(r = .18, power = .8 )
+
+# r = .14, n = 397
+
+pwr.r.test(r = .14, power = .8)
+
+# r = .06, n = 2177
+
+pwr.r.test(r = .06, power = .8)
+
+```
+
 

@@ -1,6 +1,8 @@
 ---
 title: "Reliability of Infant Research"
 output: html_notebook
+author: "Krista Byers-Heinlein"
+date:  "April 6, 2021"
 ---
 
 
@@ -11,6 +13,7 @@ library(tidyverse)
 library(pwr)
 library(bayestestR)
 library(ggthemes)
+library(psych)
 
 ```
 
@@ -50,12 +53,12 @@ true_scores <- rbind(true_large_stable, true_large_variable, true_small_stable, 
 # Add measurement error to datasets
 
 with_large_errors <- true_scores %>%
-  mutate(score_observed = score_true + rep(meas_err_small, 4)) %>%
+  mutate(score_observed = score_true + rep(meas_err_large, 4)) %>%
   mutate(error = "large") %>%
   mutate(error_sd = 1)
 
 with_small_errors <- true_scores %>%
-  mutate(score_observed = score_true + rep(meas_err_large, 4)) %>%
+  mutate(score_observed = score_true + rep(meas_err_small, 4)) %>%
   mutate(error = "small") %>%
   mutate(error_sd = .5)
 
@@ -101,10 +104,10 @@ sim_data_m1 <- sim_data_summary %>%
 ```{r plot}
 
 
-true_variability_labs <- c("high true variability (sd = 1)", "low true variability (sd = .5)")
+true_variability_labs <- c("high true variability \n (sd = 1)", "low true variability \n (sd = .5)")
 names(true_variability_labs) <- c("high", "low")
 
-error_labs <- c("large measurement error (sd = 1)", "small measurement error (sd = .5)")
+error_labs <- c("large measurement error \n (sd = 1)", "small measurement error \n (sd = .5)")
 names(error_labs) <- c("large", "small")
 
 
@@ -118,7 +121,7 @@ sim_plot_m1 <- sim_data %>%
     theme_few() +
   scale_x_discrete("Score type") +
   ylim(-3, 4) +
-  theme(legend.position = "none", text = element_text(size=12)) +
+  theme(legend.position = "none", text = element_text(size=12), strip.text = element_text(size = 12), axis.text=element_text(size=12)) +
   geom_label(data = sim_data_m1, x = .5, y = 3.8, size = 6, alpha = 0,  label.size = NA, aes(label = panel)) +
   geom_label(data = sim_data_m1,
              x = 1.5,
@@ -127,7 +130,7 @@ sim_plot_m1 <- sim_data %>%
              label.padding = unit(.1, "lines"), 
              alpha = 0, 
              vjust = "bottom", 
-             size = 3,
+             size = 4,
              aes(label = (paste("Mean = ", true_mean, ", sd = ", round(true_sd, 2), ", d = ", round(d, 2), ", r\u2093\u2093  = ", round(r, 2))))) # To get subscripts, use unicode
               
 
@@ -136,11 +139,11 @@ ggsave("reliability_plot_m1.png", width = 8.5, height = 5, units = "in", dpi = 3
 
 
 ```
-## Table 1 - Sample size and power
+## Table 1 - Sample size and effect size
 
 ```{r}
 
-# Compute necessary sample sizes at different levels of Cohen's d (Table 1)
+# Compute necessary sample sizes at different levels of Cohen's d (Table 1) for paired samples t-test
 
 # d = .2, n = 393
 
@@ -164,6 +167,8 @@ pwr.t.test(d = 1, power = .8)
 
 
 ```
+
+## Table 2 - Sample size and reliability
 
 ```{r}
 # Table 2 - Measurement reliability, true r, observable r, n for power = .8
@@ -206,6 +211,47 @@ pwr.r.test(r = .14, power = .8)
 # r = .06, n = 2177
 
 pwr.r.test(r = .06, power = .8)
+
+```
+
+## Example ICC computation and sample write-up
+
+```{r}
+
+# Read in all MB1 data from GitHub and archive for replicability
+
+# mb1_git <- read_csv("https://github.com/manybabies/mb1-analysis-public/raw/master/processed_data/03_data_diff_main.csv") %>%
+#   select(lab, subid, diff, stimulus_num, method, age_group) %>%
+#   mutate(subid = paste(lab, subid, sep = "_"))
+# 
+# write.csv(mb1_git, "mb1.csv")
+
+# Read in archived MB1 data
+
+mb1 <- read_csv("mb1.csv")
+
+# Must have data in wide dataframe (one row per participant, observations across columns), rather than long dataframe
+
+mb1_wide <- mb1 %>%
+  filter(!is.na(diff)) %>% # Removes NA values that were causing problems
+  pivot_wider(id_cols = c(lab, subid, method, age_group), names_from = stimulus_num, values_from = diff)
+
+# Must remove all factor columns (lab, studyid, method, age_group), leaving just matrix of values needed to compute ICC
+
+mb1_icc <- mb1_wide %>%
+  select(-lab, -subid, -method, -age_group)
+
+# Compute ICC values.
+
+ICC(mb1_icc, missing = FALSE, lmer = TRUE)
+# ICC3k = 12.7, 95% CI = [.09, .18]
+
+# Observe that ICC3k is equivalent to Cronbach's alpha
+
+alpha(mb1_icc)
+
+# Sample write-up: "Reliability of the looking time difference to the IDS versus ADS stimuli across the 8 trial pairs was estimated with an intraclass correlation coefficient (ICC), based on a mean-rating (k = 8), consistency, 2-way mixed-effects model (ICC3k) using the psych package in R (Reville 2018). The estimated ICC was .14, 95% CI = [.09, .18]."
+
 
 ```
 

@@ -1,5 +1,5 @@
 ---
-title: "Reliability of Infant Research"
+title: "Six solutions for more reliable infant research"
 output: html_notebook
 author: "Krista Byers-Heinlein"
 date:  "April 6, 2021"

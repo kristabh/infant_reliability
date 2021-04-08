@@ -220,37 +220,37 @@ pwr.r.test(r = .06, power = .8)
 
 # Read in all MB1 data from GitHub and archive for replicability
 
-# mb1_git <- read_csv("https://github.com/manybabies/mb1-analysis-public/raw/master/processed_data/03_data_diff_main.csv") %>%
-#   select(lab, subid, diff, stimulus_num, method, age_group) %>%
-#   mutate(subid = paste(lab, subid, sep = "_"))
+mb1_git <- read_csv("https://github.com/manybabies/mb1-analysis-public/raw/master/processed_data/03_data_diff_main.csv") %>%
+  select(lab, subid, diff, stimulus_num, trial_num, method, age_group) %>%
+  mutate(subid = paste(lab, subid, sep = "_"))
 # 
 # write.csv(mb1_git, "mb1.csv")
 
 # Read in archived MB1 data
 
-mb1 <- read_csv("mb1.csv")
+mb1 <- read.csv("mb1.csv")
 
-# Must have data in wide dataframe (one row per participant, observations across columns), rather than long dataframe
+# Must have data in wide dataframe (one row per participant, observations across columns), rather than long dataframe. Here using stimulus_num rather than trial_num to identify items
 
 mb1_wide <- mb1 %>%
-  filter(!is.na(diff)) %>% # Removes NA values that were causing problems
-  pivot_wider(id_cols = c(lab, subid, method, age_group), names_from = stimulus_num, values_from = diff)
+  filter(!is.na(diff)) %>% # Removes NA values that were causing problems due to repeated rows. These will re-appear when we pivotwider
+  pivot_wider(id_cols = c(lab, subid), names_from = stimulus_num, values_from = diff)
 
-# Must remove all factor columns (lab, studyid, method, age_group), leaving just matrix of values needed to compute ICC
+# Must remove all factor columns (lab, subid, method, age_group), leaving just matrix of values needed to compute ICC
 
 mb1_icc <- mb1_wide %>%
-  select(-lab, -subid, -method, -age_group)
+  select(-lab, -subid)
 
 # Compute ICC values.
 
 ICC(mb1_icc, missing = FALSE, lmer = TRUE)
-# ICC3k = 12.7, 95% CI = [.09, .18]
+# ICC2k = .14, 95% CI = [.09, .18]
 
 # Observe that ICC3k is equivalent to Cronbach's alpha
 
 alpha(mb1_icc)
 
-# Sample write-up: "Reliability of the looking time difference to the IDS versus ADS stimuli across the 8 trial pairs was estimated with an intraclass correlation coefficient (ICC), based on a mean-rating (k = 8), consistency, 2-way mixed-effects model (ICC3k) using the psych package in R (Reville 2018). The estimated ICC was .14, 95% CI = [.09, .18]."
+# Sample write-up: "Reliability of the looking time difference to the IDS versus ADS stimuli across the 8 trial pairs was estimated with an intraclass correlation coefficient (ICC), based on a mean-rating (k = 8), consistency, 2-way random-effects model (ICC3k) using the psych package in R (Reville 2018). The estimated ICC was .14, 95% CI = [.09, .18]."
 
 
 ```

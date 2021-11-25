@@ -139,11 +139,11 @@ ggsave("reliability_plot_m1.png", width = 8.5, height = 5, units = "in", dpi = 3
 
 
 ```
-## Table 1 - Sample size and effect size
+## Table 2 - Sample size and effect size
 
 ```{r}
 
-# Compute necessary sample sizes at different levels of Cohen's d (Table 1) for paired samples/single-sample t-test
+# Compute necessary sample sizes at different levels of Cohen's d (Table 2) for paired samples/single-sample t-test
 
 # d = .2, n = 198
 
@@ -166,7 +166,7 @@ power.t.test(delta=.8,type="one.sample",alternative="two.sided",power=.8)
 power.t.test(delta=1,type="one.sample",alternative="two.sided",power=.8)
 
 
-# Compute necessary sample sizes at different levels of Cohen's d (Table 1) for independent samples t-test
+# Compute necessary sample sizes at different levels of Cohen's d (Table 2) for independent samples t-test
 
 # d = .2, n = 393
 
@@ -194,7 +194,7 @@ power.t.test(delta=1,type="two.sample",alternative="two.sided",power=.8)
 ## Table 2 - Sample size and reliability
 
 ```{r}
-# Table 2 - Measurement reliability, true r, observable r, n for power = .8
+# Table 3 - Measurement reliability, true r, observable r, n for power = .8
 
 # Create function for spearman-brown formula
 spearman_brown <- function(r_true, rxx, ryy) {

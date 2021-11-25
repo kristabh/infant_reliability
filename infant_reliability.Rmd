@@ -143,27 +143,50 @@ ggsave("reliability_plot_m1.png", width = 8.5, height = 5, units = "in", dpi = 3
 
 ```{r}
 
-# Compute necessary sample sizes at different levels of Cohen's d (Table 1) for paired samples t-test
+# Compute necessary sample sizes at different levels of Cohen's d (Table 1) for paired samples/single-sample t-test
+
+# d = .2, n = 198
+
+power.t.test(delta=.2,type="one.sample",alternative="two.sided",power=.8)
+
+# d = .4, n = 51
+
+power.t.test(delta=.4,type="one.sample",alternative="two.sided",power=.8)
+
+# d = .6, n = 24
+
+power.t.test(delta=.6,type="one.sample",alternative="two.sided",power=.8)
+
+# d = .8, n = 14
+
+power.t.test(delta=.8,type="one.sample",alternative="two.sided",power=.8)
+
+#d = 1, n = 10
+
+power.t.test(delta=1,type="one.sample",alternative="two.sided",power=.8)
+
+
+# Compute necessary sample sizes at different levels of Cohen's d (Table 1) for independent samples t-test
 
 # d = .2, n = 393
 
-pwr.t.test(d = .2, power = .8)
+power.t.test(delta=.2,type="two.sample",alternative="two.sided",power=.8)
 
 # d = .4, n = 99
 
-pwr.t.test(d = .4, power = .8)
+power.t.test(delta=.4,type="two.sample",alternative="two.sided",power=.8)
 
 # d = .6, n = 45
 
-pwr.t.test(d = .6, power = .8)
+power.t.test(delta=.6,type="two.sample",alternative="two.sided",power=.8)
 
 # d = .8, n = 26
 
-pwr.t.test(d = .8, power = .8)
+power.t.test(delta=.8,type="two.sample",alternative="two.sided",power=.8)
 
 #d = 1, n = 17
 
-pwr.t.test(d = 1, power = .8)
+power.t.test(delta=1,type="two.sample",alternative="two.sided",power=.8)
 
 
 ```
